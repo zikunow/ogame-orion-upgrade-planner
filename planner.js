@@ -20,7 +20,15 @@ function field(k,help='') {
 function renderForm() {
   $('title').textContent=t('Планировщик улучшений','Upgrade planner');document.title=t('Планировщик улучшений Ориона — OGame','Orion Upgrade Planner — OGame');
   $('intro').textContent=t('Что строить следующим? Сравниваем прирост условных МСУ на средний вылет с ценой улучшения. Каждый шаг — +1 уровень сразу на всех планетах.','What should you build next? Compare assumed MSU gain per average flight with upgrade cost. Every step adds one level on all planets.');
-  $('navResources').textContent=t('Подздания','Buildings');$('navRewards').textContent=t('Награды ↗','Rewards ↗');$('navPlanner').textContent=t('Планировщик','Planner');$('themeLabel').textContent=t('Дизайн','Design');
+  $('calculatorLabel').textContent=t('Калькулятор','Calculator');
+  $('calculatorSelect').setAttribute('aria-label',t('Калькулятор','Calculator'));
+  $('navIas').textContent=t('Калькулятор тарелок (IAS)','Scanner Calculator (IAS)');
+  $('navResources').textContent=t('Калькулятор подзданий','Orion Building Calculator');
+  $('navGeneral').textContent=t('Калькулятор T18 Генерала','General T18 Calculator');
+  $('navRewards').textContent=t('Симулятор ресурсных наград','Resource Rewards Simulator');
+  $('navPlanner').textContent=t('Планировщик улучшений','Upgrade Planner');
+  $('calculatorSelect').value='https://zikunow.github.io/ogame-orion-upgrade-planner/';
+  $('themeLabel').textContent=t('Дизайн','Design');
   $('theme').value=theme;document.documentElement.dataset.theme=theme;document.documentElement.lang=lang;
   $('langRu').setAttribute('aria-pressed',String(lang==='ru'));$('langEn').setAttribute('aria-pressed',String(lang==='en'));
   $('form').innerHTML=`<section class="panel account-panel"><div class="section-top"><h2>${t('Аккаунт и модель','Account and model')}</h2><span class="note">${t('Одинаковые уровни на всех планетах','Identical levels on all planets')}</span></div>
@@ -96,6 +104,14 @@ discount = min(0.0025 × labLevel, 0.25)</pre>
   <p>${t('Точные ресурсы и стоимость МСУ хранятся в BigInt; награды и эффективность — приближённые числа. Диапазоны калькулятора: тарелки/T18 до 80, подздания до 50, планеты до 50. Это не подтверждённые игровые лимиты.','Resource costs and MSU totals use exact BigInt arithmetic; rewards and efficiencies use approximate numbers. Calculator ranges: scanner/T18 up to 80, buildings up to 50, planets up to 50. These are not confirmed game limits.')}</p>
   <p><a href="https://docs.google.com/spreadsheets/d/1qThnC-g_e5L8qr_c1JbNX0UI3StwBIj048nCSvhY9Ps/edit" target="_blank" rel="noreferrer">${t('Исходный эксперимент ↗','Source experiment ↗')}</a> · <a href="https://github.com/zikunow/ogame-orion-rewards-calculator" target="_blank" rel="noreferrer">${t('Модель калькулятора наград ↗','Rewards calculator model ↗')}</a></p></details>`;
 }
+$('calculatorSelect').addEventListener('change',()=>{
+  const selected=$('calculatorSelect').value;
+  if(selected==='https://zikunow.github.io/ogame-orion-upgrade-planner/')return;
+  const target=new URL(selected);
+  target.searchParams.set('lang',lang);
+  target.searchParams.set('theme',theme);
+  location.assign(target.href);
+});
 $('langRu').addEventListener('click',()=>{lang='ru';renderForm();renderResult();updateUrl();});
 $('langEn').addEventListener('click',()=>{lang='en';renderForm();renderResult();updateUrl();});
 $('theme').addEventListener('change',()=>{theme=$('theme').value;document.documentElement.dataset.theme=theme;updateUrl();});

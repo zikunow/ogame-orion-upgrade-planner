@@ -8,6 +8,9 @@ const {chromium}=require('playwright');
   page.on('pageerror',e=>errors.push(e.message));
   const response=await page.goto(process.env.PLANNER_URL||'https://zikunow.github.io/ogame-orion-upgrade-planner/?lang=en');
   assert.equal(response.status(),200);
+  assert.equal(await page.locator('#calculatorSelect').inputValue(),'https://zikunow.github.io/ogame-orion-upgrade-planner/');
+  assert.equal(await page.locator('#calculatorSelect option:checked').textContent(),'Upgrade Planner');
+  assert.equal(await page.locator('#calculatorSelect option').count(),5);
   assert.equal(await page.locator('.planner-table tbody tr').count(),50);
   assert.match(await page.locator('.planner-table tbody tr').first().textContent(),/T18.*7 → 8/);
   assert.equal(await page.locator('.snapshot-table tbody tr').count(),1);
@@ -23,10 +26,13 @@ const {chromium}=require('playwright');
   await page.reload();assert.equal(await page.locator('#planets').inputValue(),'9');assert.equal(await page.locator('#budget').inputValue(),'0');
   await page.locator('#planets').fill('');assert.equal(await page.locator('#generate').isDisabled(),true);
   await page.locator('#reset').click();await page.locator('#langRu').click();assert.match(await page.locator('h1').textContent(),/Планировщик/);
+  assert.equal(await page.locator('#calculatorSelect option:checked').textContent(),'Планировщик улучшений');
   for(const theme of ['minimal','cosmic']){
     await page.locator('#theme').selectOption(theme);
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Viewport overflow '+width+' '+theme);
   }
+  await page.locator('#calculatorSelect').selectOption('https://zikunow.github.io/ogame-orion-ias-calculator/resources.html');
+  await page.waitForURL('https://zikunow.github.io/ogame-orion-ias-calculator/resources.html?lang=ru&theme=cosmic');
   assert.deepEqual(errors,[]);console.log('PASS planner '+width+'px');await context.close();
  }}finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

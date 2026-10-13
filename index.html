@@ -12,7 +12,13 @@
   <header class="hero">
     <div><p class="eyebrow">OGame · Project Orion</p><h1 id="title">Планировщик улучшений</h1><p class="lede" id="intro"></p></div>
     <nav class="header-actions" aria-label="Language and design">
-      <div class="calculator-tabs header-calculators"><a href="https://zikunow.github.io/ogame-orion-ias-calculator/">IAS</a><a href="https://zikunow.github.io/ogame-orion-ias-calculator/resources.html" id="navResources">Подздания</a><a href="https://zikunow.github.io/ogame-orion-ias-calculator/general.html">T18</a><a href="https://zikunow.github.io/ogame-orion-rewards-calculator/" id="navRewards">Награды ↗</a><a href="index.html" aria-current="page" id="navPlanner">Планировщик</a></div>
+      <label class="calculator-picker"><span id="calculatorLabel">Калькулятор</span><select id="calculatorSelect" aria-label="Калькулятор">
+        <option value="https://zikunow.github.io/ogame-orion-ias-calculator/" id="navIas">Калькулятор тарелок (IAS)</option>
+        <option value="https://zikunow.github.io/ogame-orion-ias-calculator/resources.html" id="navResources">Калькулятор подзданий</option>
+        <option value="https://zikunow.github.io/ogame-orion-ias-calculator/general.html" id="navGeneral">Калькулятор T18 Генерала</option>
+        <option value="https://zikunow.github.io/ogame-orion-rewards-calculator/" id="navRewards">Симулятор ресурсных наград</option>
+        <option value="https://zikunow.github.io/ogame-orion-upgrade-planner/" id="navPlanner" selected>Планировщик улучшений</option>
+      </select></label>
       <div class="language-switch"><button type="button" id="langRu" aria-pressed="true">RU</button><button type="button" id="langEn" aria-pressed="false">EN</button></div>
       <label class="theme-control"><span id="themeLabel">Дизайн</span><select id="theme"><option value="minimal">Minimal</option><option value="cosmic">Cosmic</option></select></label>
     </nav>
