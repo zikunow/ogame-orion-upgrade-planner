@@ -18,7 +18,7 @@ jobs:
       - name: Prepare static site
         run: |
           mkdir _site
-          cp index.html styles.css planner.css planner.js planner-core.js rewards-core.js .nojekyll _site/
+          cp index.html styles.css planner.css planner.js planner-core.js planner-costs.js .nojekyll _site/
       - uses: actions/upload-pages-artifact@v4
         with:
           path: _site

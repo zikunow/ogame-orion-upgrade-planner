@@ -1,66 +1,43 @@
 const {test}=require('node:test');
-const assert=require('node:assert/strict');
-const fs=require('node:fs'),vm=require('node:vm');
-const P=require('../planner-core.js'),O=require('../rewards-core.js');
-const fixture=require('./fixtures/planner-reference.json');
-const close=(a,b)=>assert.ok(Math.abs(a-b)<Math.max(1e-5,Math.abs(b)*1e-11),`${a} != ${b}`);
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const P=require('../planner-core.js'),O=require('../planner-costs.js'),fixture=require('./fixtures/planner-reference.json');
 const s=(patch={})=>({...P.defaults,...patch});
-test('baseline reward model matches existing rewards calculator including search',()=>{
- const a=P.value(s()),b=O.calculate({...O.defaults});
- assert.equal(a.q,4436514);assert.equal(a.ias,702);
- close(a.resource,b.rewards.resource);close(a.lithium,b.rewards.lithium);
- close(a.claim,b.claim);close(a.search,b.scan*b.scansPerFlight);
- close(a.v,a.resource+40*(a.lithium-a.claim-a.search));
+const close=(a,b)=>assert.ok(Math.abs(a-b)<Math.max(1e-8,Math.abs(b)*1e-11),`${a} != ${b}`);
+for(const mission of ['pvp','pve'])test(`${mission}: first ten steps agree with independent Decimal calculation`,()=>{
+ const r=P.generate(s({mission,steps:10}));
+ r.rows.forEach((a,i)=>{const b=fixture[mission][i];assert.equal(a.type,b.type);assert.equal(a.to,b.to);assert.equal(a.msu,Number(b.msu));close(a.gainPercent,Number(b.gainPercent));close(a.totalGainPercent,Number(b.totalGainPercent));close(a.msuPerPercent,a.msu/a.gainPercent);});
 });
-for(const scaleLithium of [false,true])test(`first ten steps match independent Decimal reference; lithium scaling=${scaleLithium}`,()=>{
- const rows=P.generate(s({steps:10,scaleLithium})).rows,expected=fixture[scaleLithium?'scaled':'unscaled'];
- assert.equal(rows.length,10);
- rows.forEach((r,i)=>{assert.equal(r.type,expected[i].type);assert.equal(r.to,expected[i].to);assert.equal(r.msu,Number(expected[i].msu));close(r.deltaV,Number(expected[i].deltaV));});
+test('metal +1 gives 1.2% from zero, but 0.77922% from all level 15',()=>{
+ for(const [levels,expected]of [[0,1.2],[15,1.2/1.54]]){
+  const state=s({metal:levels,crystal:levels,deut:levels});const before=P.value(state),after=P.value({...state,metal:levels+1});
+  close((after.index/before.index-1)*100,expected);close(after.resourceBonus-before.resourceBonus,.012);
+ }
 });
-test('costs reuse exact reference functions, apply planet count and T18-only discount',()=>{
- for(const type of P.types){const a=P.cost(s(),type),b=P.cost(s({planets:9}),type);assert.equal(a.units,2n*b.units);}
- assert.notEqual(P.value(s()).resource,P.value(s({planets:9})).resource);
- for(const type of P.types){const a=P.cost(s({labLevel:0}),type),b=P.cost(s({labLevel:100}),type);if(type==='t18')assert.ok(b.units<a.units);else assert.equal(a.units,b.units);}
- const c=P.cost(s(),'t18');assert.equal(c.resources.metal,O.generalCostAtLevel(8,25).metal*18n);
+test('exact costs apply all planets; discount affects T18 only',()=>{
+ for(const type of P.types){assert.equal(P.cost(s(),type).units,2n*P.cost(s({planets:9}),type).units);const a=P.cost(s({labLevel:0}),type),b=P.cost(s({labLevel:100}),type);if(type==='t18')assert.ok(b.units<a.units);else assert.equal(a.units,b.units);}
+ assert.equal(P.cost(s(),'t18').resources.metal,O.generalCostAtLevel(8,25).metal*18n);
+ assert.notEqual(P.value(s()).resourceFactor,P.value(s({planets:9})).resourceFactor);
 });
-test('one resource building changes exactly one third of base MSU; no lithium cost effect',()=>{
- const a=P.value(s()),b=P.value(s({metal:16}));
- close(b.resource-a.resource,a.resource/(1+.002*18*15)*(.002*18/3));
- assert.equal(a.netLithium,b.netLithium);
- const t=P.value(s({t18:8}));assert.equal(a.claim,t.claim);assert.equal(a.search,t.search);
-});
-test('scanner lithium scaling assumption affects rewards; costs scale in both modes',()=>{
- for(const scaleLithium of [false,true]){const a=P.value(s({scaleLithium})),b=P.value(s({scaleLithium,scannerLevel:40}));close(b.lithium/a.lithium,scaleLithium?b.q/a.q:1);close(b.claim/a.claim,b.q/a.q);close(b.search/a.search,b.q/a.q);}
-});
-test('candidates are recomputed, all steps positive, totals and snapshots reconcile',()=>{
- const initial=s({steps:100,scaleLithium:true}),r=P.generate(initial);let state=initial,total=0n;
- for(const row of r.rows){const best=P.candidates(state).find(x=>x.deltaV>0);assert.equal(row.type,best.type);assert.ok(row.deltaV>0);assert.equal(row.state[row.type],state[row.type]+1);total+=row.units;assert.equal(total,row.totalUnits);state=row.state;}
- assert.equal(total,r.totalUnits);assert.equal(r.slices.reduce((a,x)=>a+x.transitionUnits,0n),total);
- assert.ok(r.slices.length>1);assert.equal(r.slices.at(-1).complete,false);
+test('all candidates recompute; totals compound and snapshots reconcile',()=>{
+ const initial=s({steps:100}),r=P.generate(initial);let state=initial,total=0n,multiplier=1;
+ for(const row of r.rows){const best=P.candidates(state)[0];assert.equal(row.type,best.type);assert.ok(row.gainPercent>0);total+=row.units;assert.equal(total,row.totalUnits);multiplier*=1+row.gainPercent/100;close((multiplier-1)*100,row.totalGainPercent);state=row.state;}
+ assert.equal(total,r.totalUnits);assert.equal(r.slices.reduce((a,x)=>a+x.transitionUnits,0n),total);assert.ok(r.slices.length>1);
  for(const x of r.slices.filter(x=>x.complete)){assert.equal(r.rows[x.step].type,'scannerLevel');assert.equal(x.state.scannerLevel,r.rows[x.step].from);}
 });
-test('budget is exact, never exceeded; no cheaper substitution for the best step',()=>{
- const best=P.candidates(s())[0];assert.equal(P.generate(s({budget:'0'})).rows.length,0);
- const r=P.generate(s({budget:String(best.msu)}));assert.equal(r.rows.length,1);assert.equal(r.totalUnits,best.units);assert.equal(r.reason,'budget');
- assert.equal(P.budgetUnits('9007199254740993.5'),18014398509481987n);
- assert.equal(P.budgetUnits('0,5'),1n);assert.throws(()=>P.budgetUnits('1.2'));
-});
-test('negative V keeps absolute selection and marks relative gain undefined',()=>{
- const initial=s({lithiumValue:1e6});assert.ok(P.value(initial).v<0);
- const r=P.generate(initial);assert.ok(r.rows.length);assert.equal(r.rows[0].relative,null);assert.ok(r.rows.every(x=>x.deltaV>0));
-});
-test('non-General excludes T18, caps and invalid input are explicit',()=>{
+test('budgets, class exclusions, ranges and old links are handled',()=>{
+ const best=P.candidates(s())[0];assert.equal(P.generate(s({budget:'0'})).rows.length,0);const r=P.generate(s({budget:String(best.msu)}));assert.equal(r.rows.length,1);assert.equal(r.reason,'budget');
+ assert.equal(P.budgetUnits('9007199254740993.5'),18014398509481987n);assert.throws(()=>P.budgetUnits('1.2'));
  for(const playerClass of ['collector','discoverer'])assert.ok(P.generate(s({playerClass})).rows.every(x=>x.type!=='t18'));
- const max=s({scannerLevel:80,metal:50,crystal:50,deut:50,lithium:50,t18:80});assert.equal(P.generate(max).reason,'noGain');
- for(const patch of [{planets:0},{scannerLevel:81},{metal:NaN},{t18:Infinity},{economy:5},{lithiumValue:-1},{experience:101},{scaleLithium:'yes'},{budget:'1e1000'}])assert.throws(()=>P.generate(s(patch)),RangeError);
+ assert.equal(P.generate(s({scannerLevel:80,metal:50,crystal:50,deut:50,t18:80})).reason,'noGain');
+ for(const patch of [{planets:0},{metal:NaN},{t18:Infinity},{mission:'wrong'},{experience:101},{budget:'1e1000'}])assert.throws(()=>P.generate(s(patch)),RangeError);
+ assert.deepEqual(P.generate(s({lithium:100,lithiumValue:1e9,scaleLithium:true})).rows,P.generate(s()).rows.map(x=>({...x,state:{...x.state,lithium:100,lithiumValue:1e9,scaleLithium:true}})));
 });
-test('browser adapter generates both tables, validates, resets, localizes and restores links',()=>{
- const elements={};const el=id=>elements[id]??=( {value:'',textContent:'',innerHTML:'',hidden:false,disabled:false,checked:false,handlers:{},addEventListener(k,fn){this.handlers[k]=fn},setAttribute(){}} );
- const context=vm.createContext({OrionPlanner:P,Orion:O,URL,URLSearchParams,Intl,Number,BigInt,Math,document:{getElementById:el,documentElement:{dataset:{}}},location:{href:'https://example.com/planner.html',search:''},history:{replaceState(){}},navigator:{clipboard:{async writeText(){}}}});
+test('UI presents percentage gains and removes old inputs and result columns',()=>{
+ const elements={};const el=id=>elements[id]??=({value:'',textContent:'',innerHTML:'',hidden:false,disabled:false,handlers:{},addEventListener(k,fn){this.handlers[k]=fn},setAttribute(){}});
+ const context=vm.createContext({OrionPlanner:P,OrionCosts:O,URL,URLSearchParams,Intl,Number,BigInt,Math,document:{getElementById:el,documentElement:{dataset:{}}},location:{href:'https://example.com/',search:'?lithium=18&lithiumValue=40&scaleLithium=1'},history:{replaceState(){}},navigator:{clipboard:{async writeText(){}}}});
  vm.runInContext(fs.readFileSync(require.resolve('../planner.js'),'utf8'),context);
- assert.match(el('results').innerHTML,/planner-table/);assert.match(el('results').innerHTML,/snapshot-table/);
- el('planets').value='0';el('planets').handlers.input();assert.equal(el('generate').disabled,true);assert.equal(el('results').innerHTML,'');
- el('reset').handlers.click();assert.equal(el('generate').disabled,false);assert.match(el('results').innerHTML,/T18/);
- el('langEn').handlers.click();assert.match(el('results').innerHTML,/Every step/);
+ assert.match(el('results').innerHTML,/МСУ \/ \+1%/);assert.doesNotMatch(el('form').innerHTML+el('results').innerHTML,/lithium|scaleLithium|чистого Li|Δ V|вылет/);
+ el('planets').value='0';el('planets').handlers.input();assert.equal(el('generate').disabled,true);el('reset').handlers.click();assert.equal(el('generate').disabled,false);
+ el('langEn').handlers.click();assert.match(el('results').innerHTML,/Total gain vs start/);
  el('budget').value='0';el('budget').handlers.input();el('generate').handlers.click();assert.match(el('results').innerHTML,/No upgrades selected/);
 });

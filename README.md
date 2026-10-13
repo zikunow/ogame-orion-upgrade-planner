@@ -1,47 +1,37 @@
 # OGame Orion Upgrade Planner
 
-An experimental upgrade planner for OGame Project Orion. Enter your account configuration to generate a sequence of IAS, resource building, lithium building and General T18 upgrades, with costs and expected reward gains.
+Find the cheapest next account-wide upgrade per **+1% resource reward**. Every step upgrades one level on all selected planets and recomputes all candidates.
 
-**Every step upgrades one level on all selected planets.** Default: 18 planets. The planner recomputes all candidates after every step and selects the highest positive expected gain per invested MSU. This is a greedy path, not a guaranteed global optimum.
+Website: https://zikunow.github.io/ogame-orion-upgrade-planner/
 
-## Website
+The starting configuration is 100%. The planner compares scanner upgrades, metal/crystal/deuterium buildings and General T18. It shows step and cumulative cost, step gain, compounded total gain relative to the start, MSU per +1% and scanner-level snapshots. There are no absolute flight-income estimates or lithium settings, candidates or balances.
 
-https://zikunow.github.io/ogame-orion-upgrade-planner/
+## Model
 
-RU/EN, minimal/cosmic themes, 10/50/100 steps, optional budget and shareable settings links. Scanner snapshots are recorded before the next chosen scanner upgrade; the final snapshot shows the stopping state.
+- Each resource contributes one third of base resource MSU.
+- Each resource building adds `0.002 × planets × level` to that resource's bonus.
+- Resource factor: `1 + (metalBonus + crystalBonus + deuteriumBonus) / 3`.
+- Scanner resource rewards are assumed proportional to `floor(168.96 × level × 1.1^(level−1))`. Only scanner ratios are used.
+- T18 enhancement: `0.002 × T18 × planets × (1 + 0.001 × experience + buildingBoost)`.
+- General multiplier: `2 + enhancement` in PvP, `1.5 + 0.5 × enhancement` in PvE. Choose a mode; PvP is the default. Other classes use multiplier 1 and exclude T18.
+- Total resource index: scanner factor × resource factor × class multiplier.
+- Step gain: `(indexAfter / indexBefore − 1) × 100`.
+- Total gain: `(indexAfter / indexStart − 1) × 100`.
+- Efficiency: step cost in MSU / step gain in percent. Lower is better.
 
-## Enable GitHub Pages
+For 18 planets, a single metal building upgrade adds 3.6 percentage points to the metal bonus, or 1.2 points to the combined resource bonus. With all three buildings initially at level 15, the actual total resource reward gain is `1.552 / 1.54 − 1 = 0.77922%`; from all level 0 it is exactly 1.2%.
 
-1. Open **Settings → Pages**.
-2. Under **Build and deployment → Source**, select **GitHub Actions**.
-3. Open **Actions → Deploy GitHub Pages → Run workflow** if the first run failed before Pages was enabled.
+The algorithm makes a greedy next-step choice, not a proven global optimum. Percent gains compound; they do not add. Equal efficiencies use lower cost and then the stable order scanner, metal, crystal, deuterium, T18. A path stops when the best next upgrade exceeds the remaining optional budget.
 
-The workflow tests calculations, publishes the static page and verifies the live interface at 1440, 768, 390 and 320 px.
+Costs use exact rational BigInt arithmetic copied from the IAS/building/T18 calculators; reward factors and percentages are approximate. MSU = Metal + 1.5 × Crystal + 3 × Deuterium. Built levels and lifeform discount/boost building construction are excluded. Calculator ranges: 50 planets, scanner/T18 up to 80, resource buildings up to 50 (not confirmed game caps).
 
-## Calculation model
-
-Uses the fixed second-algorithm experimental selection: 102 flights (12 PvE, 90 PvP) and 313 scans. Mean reward bases and exact cost functions are reused from [Orion Rewards Calculator](https://github.com/zikunow/ogame-orion-rewards-calculator).
-
-`V = expected resource MSU + assumed lithium value × (lithium reward − claim cost − search cost)`
-
-Candidates are ranked by `deltaV / upgradeCostMSU`. Costs include all selected planets and use exact BigInt arithmetic. Expected rewards and efficiencies use floating-point numbers. Lithium value is an assumed valuation, not a game exchange rate. Each resource accounts for one third of base resource MSU as an explicit assumption.
-
-Economy is fixed at the verified ×10 baseline in this version. Lithium reward scaling with Q is an explicit switch, disabled by default. The mission selection is held fixed; thresholds are not reapplied after upgrades. Q is a scaling parameter, not additional free daily lithium income.
-
-At default settings the first upgrades are T18 7→8, lithium 18→19, crystal 15→16, deuterium 15→16, metal 15→16. No scanner upgrade is selected in the first 50 steps under the conservative lithium assumption. With proportional lithium scaling enabled, scanner 39→40 is step 3.
-
-Calculator limits (not confirmed game caps): 50 planets, scanner/T18 level 80 and resource/lithium building level 50. If the best upgrade exceeds the remaining budget, the planner stops without choosing a cheaper substitute. Lifeform discount and technology boost building construction is excluded.
-
-## Validation
+## Validation and deployment
 
 ```sh
 node --test tests/*.test.cjs
-```
-
-The first ten steps in both lithium modes are independently checked against a Python Decimal reference with 65-digit precision. Regenerate its fixture with:
-
-```sh
 python3 tests/planner-reference.py > tests/fixtures/planner-reference.json
 ```
 
-Related calculators: [IAS / buildings / T18](https://zikunow.github.io/ogame-orion-ias-calculator/), [expected rewards](https://zikunow.github.io/ogame-orion-rewards-calculator/).
+The first ten steps in PvP and PvE match an independent 65-digit Python Decimal reference. Tests also cover resource shares, all-planet costs, discounts, compound gains, budgets, caps, class exclusions and the UI adapter. The GitHub Pages workflow runs these tests, publishes the static site and checks the live interface in RU/EN, both themes and four viewport widths.
+
+Enable **Settings → Pages → Source → GitHub Actions**. Future pushes to `main` deploy automatically.

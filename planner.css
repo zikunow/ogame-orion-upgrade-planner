@@ -42,12 +42,12 @@ a { color:var(--accent); }
 @media(max-width:1000px) { .field-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:680px) { .field-grid,.rewards-summary,.daily-grid { grid-template-columns:1fr; } .account-panel,.investment,.flight-panel,.daily-panel,.model-panel { padding:16px; } .ledger { font-size:12px; } }
 .planner-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:20px; align-items:center; }
-.planner-table { min-width:1450px; }
+.planner-table { min-width:1150px; }
 .planner-table th { white-space:normal; min-width:120px; vertical-align:bottom; }
 .planner-table td:first-child,.planner-table th:first-child { min-width:55px; }
 .planner-table td:nth-child(2) { text-align:left; min-width:190px; }
 .planner-table td:last-child { white-space:normal; min-width:185px; text-align:left; }
-.snapshot-table { min-width:1450px; }
+.snapshot-table { min-width:850px; }
 .snapshot-table th { white-space:normal; min-width:120px; }
 .snapshot-table th:first-child,.snapshot-table td:first-child { min-width:80px; }
 .planner-summary { grid-template-columns:repeat(3,minmax(0,1fr)); }
