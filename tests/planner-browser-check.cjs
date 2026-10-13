@@ -1,0 +1,32 @@
+// Live QA is run after publication by the existing Pages workflow.
+const assert=require('node:assert/strict');
+const {chromium}=require('playwright');
+(async()=>{
+ const browser=await chromium.launch({headless:true});
+ try{for(const width of [1440,768,390,320]){
+  const context=await browser.newContext({viewport:{width,height:1000}}),page=await context.newPage(),errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  const response=await page.goto(process.env.PLANNER_URL||'https://zikunow.github.io/ogame-orion-upgrade-planner/?lang=en');
+  assert.equal(response.status(),200);
+  assert.equal(await page.locator('.planner-table tbody tr').count(),50);
+  assert.match(await page.locator('.planner-table tbody tr').first().textContent(),/T18.*7 → 8/);
+  assert.equal(await page.locator('.snapshot-table tbody tr').count(),1);
+  assert.match(await page.locator('#experienceHelp').textContent(),/10%/);
+  await page.locator('#scaleLithium').check();assert.equal(await page.locator('.planner-table').count(),0);
+  await page.locator('#generate').click();assert.ok(await page.locator('.snapshot-table tbody tr').count()>1);
+  await page.locator('#playerClass').selectOption('collector');assert.equal(await page.locator('#t18').isDisabled(),true);
+  await page.locator('#generate').click();assert.equal(await page.locator('.planner-table tbody tr td:nth-child(2)').filter({hasText:'T18'}).count(),0);
+  await page.locator('#planets').fill('9');await page.locator('#steps').selectOption('10');await page.locator('#generate').click();
+  assert.equal(await page.locator('.planner-table tbody tr').count(),10);
+  assert.ok((await page.locator('.planner-table tbody tr td:nth-child(3)').allTextContents()).every(s=>s==='All 9'));
+  await page.locator('#budget').fill('0');await page.locator('#generate').click();assert.equal(await page.locator('.planner-table tbody tr').count(),0);
+  await page.reload();assert.equal(await page.locator('#planets').inputValue(),'9');assert.equal(await page.locator('#budget').inputValue(),'0');
+  await page.locator('#planets').fill('');assert.equal(await page.locator('#generate').isDisabled(),true);
+  await page.locator('#reset').click();await page.locator('#langRu').click();assert.match(await page.locator('h1').textContent(),/Планировщик/);
+  for(const theme of ['minimal','cosmic']){
+    await page.locator('#theme').selectOption(theme);
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Viewport overflow '+width+' '+theme);
+  }
+  assert.deepEqual(errors,[]);console.log('PASS planner '+width+'px');await context.close();
+ }}finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

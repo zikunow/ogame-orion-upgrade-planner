@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ru" data-theme="minimal">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Планировщик улучшений Ориона — OGame</title>
+  <meta name="description" content="Greedy Orion upgrade planner: compare IAS, resource buildings, lithium and General T18 on all planets. Experimental expected reward model. RU/EN.">
+  <link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="planner.css">
+  <script defer src="rewards-core.js"></script><script defer src="planner-core.js"></script><script defer src="planner.js"></script>
+</head>
+<body>
+<main class="shell">
+  <header class="hero">
+    <div><p class="eyebrow">OGame · Project Orion</p><h1 id="title">Планировщик улучшений</h1><p class="lede" id="intro"></p></div>
+    <nav class="header-actions" aria-label="Language and design">
+      <div class="calculator-tabs header-calculators"><a href="https://zikunow.github.io/ogame-orion-ias-calculator/">IAS</a><a href="https://zikunow.github.io/ogame-orion-ias-calculator/resources.html" id="navResources">Подздания</a><a href="https://zikunow.github.io/ogame-orion-ias-calculator/general.html">T18</a><a href="https://zikunow.github.io/ogame-orion-rewards-calculator/" id="navRewards">Награды ↗</a><a href="index.html" aria-current="page" id="navPlanner">Планировщик</a></div>
+      <div class="language-switch"><button type="button" id="langRu" aria-pressed="true">RU</button><button type="button" id="langEn" aria-pressed="false">EN</button></div>
+      <label class="theme-control"><span id="themeLabel">Дизайн</span><select id="theme"><option value="minimal">Minimal</option><option value="cosmic">Cosmic</option></select></label>
+    </nav>
+  </header>
+  <div id="form"></div>
+  <p id="validation" class="validation" role="alert" hidden></p>
+  <div id="results" aria-live="polite"></div>
+  <div id="details"></div>
+  <noscript>Включите JavaScript для расчёта. Enable JavaScript to calculate.</noscript>
+</main>
+</body></html>
