@@ -6,7 +6,7 @@ const {chromium}=require('playwright');
  try{for(const width of [1440,768,390,320]){
   const context=await browser.newContext({viewport:{width,height:1000}}),page=await context.newPage(),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
-  const response=await page.goto(process.env.PLANNER_URL||'https://zikunow.github.io/ogame-orion-upgrade-planner/?lang=en');
+  const response=await page.goto(process.env.PLANNER_URL||'https://zikunow.github.io/ogame-orion-upgrade-planner/?lang=en&threshold=28.4');
   assert.equal(response.status(),200);
   assert.equal(await page.locator('#calculatorSelect').inputValue(),'https://zikunow.github.io/ogame-orion-upgrade-planner/');
   assert.equal(await page.locator('#calculatorSelect option:checked').textContent(),'Upgrade Planner');
@@ -42,6 +42,15 @@ const {chromium}=require('playwright');
     await page.locator('#theme').selectOption('minimal');
     await page.screenshot({path:process.env.SCREENSHOT_DIR+'/planner-'+width+'.png',fullPage:true});
   }
+  await page.locator('#reset').click();assert.equal(await page.locator('#thresholdMode').inputValue(),'auto');
+  await page.locator('#playerClass').selectOption('discoverer');await page.locator('#generate').click();
+  assert.equal(await page.locator('.planner-table tbody tr').count(),50);
+  assert.equal(await page.locator('.planner-table tbody tr td:nth-child(2)').filter({hasText:'T18'}).count(),0);
+  await page.reload();assert.equal(await page.locator('#thresholdMode').inputValue(),'auto');
+  assert.equal(await page.locator('#playerClass').inputValue(),'discoverer');
+  await page.locator('#thresholdMode').selectOption('manual');await page.locator('#threshold').fill('1000');
+  assert.equal(await page.locator('#useAutoThreshold').isVisible(),true);await page.locator('#useAutoThreshold').click();
+  assert.equal(await page.locator('.planner-table tbody tr').count(),50);
   await page.locator('#theme').selectOption('cosmic');
   await page.route('https://zikunow.github.io/ogame-orion-rewards-calculator/*',route=>route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><title>Navigation test</title>'}));
   await page.locator('#calculatorSelect').selectOption('https://zikunow.github.io/ogame-orion-rewards-calculator/');
@@ -49,4 +58,5 @@ const {chromium}=require('playwright');
   assert.deepEqual(errors,[]);console.log('PASS planner '+width+'px');await context.close();
  }}finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
+
 

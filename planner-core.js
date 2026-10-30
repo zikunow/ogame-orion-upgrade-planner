@@ -4,7 +4,7 @@
   const node=typeof module!=='undefined'&&module.exports;
   const O=node?require('./planner-costs.js'):root.OrionCosts;
   const sample=node?require('./anomaly-sample.js'):root.OrionSample;
-  const defaults=Object.freeze({planets:18,playerClass:'general',mission:'pvp',scannerLevel:39,metal:15,crystal:15,deut:15,lithium:17,t18:7,experience:100,techBoost:7.5,labLevel:25,economy:10,fleetSpeed:2,slots:6,threshold:28.4,baseCashback:5,reservePercent:20,steps:50,budget:''});
+  const defaults=Object.freeze({planets:18,playerClass:'general',mission:'pvp',scannerLevel:39,metal:15,crystal:15,deut:15,lithium:17,t18:7,experience:100,techBoost:7.5,labLevel:25,economy:10,fleetSpeed:2,slots:6,threshold:28.4,thresholdMode:'manual',baseCashback:5,reservePercent:20,steps:50,budget:''});
   const types=['scannerLevel','metal','crystal','deut','lithium','t18'];
   const caps={scannerLevel:80,metal:50,crystal:50,deut:50,lithium:50,t18:80};
   function budgetUnits(value){
@@ -19,6 +19,7 @@
     const integer={planets:[1,50],scannerLevel:[1,80],metal:[0,50],crystal:[0,50],deut:[0,50],lithium:[0,50],t18:[0,80],experience:[0,100],labLevel:[0,100],economy:[1,10],slots:[1,100]};
     for(const [key,[min,max]]of Object.entries(integer))if(!Number.isInteger(s[key])||s[key]<min||s[key]>max)errors.push(key);
     for(const [key,min,max]of [['techBoost',0,1000],['fleetSpeed',.1,20],['threshold',0,1000],['baseCashback',0,25],['reservePercent',1,90]])if(!Number.isFinite(s[key])||s[key]<min||s[key]>max)errors.push(key);
+    if(s.thresholdMode!==undefined&&!['auto','manual'].includes(s.thresholdMode))errors.push('thresholdMode');
     if(!['general','collector','discoverer'].includes(s.playerClass))errors.push('playerClass');
     if(!['pvp','pve','all'].includes(s.mission))errors.push('mission');
     if(![10,50,100].includes(s.steps))errors.push('steps');
@@ -39,9 +40,24 @@
       const factor=(isPvp?pvp/sample.generalPvp:pve/sample.generalPve)*scale/(1+sample.resourceBonus);
       const reward=(m*bonuses[0]+1.5*c*bonuses[1]+3*d*bonuses[2])*factor;
       const cost=claim*scale,ratio=cost>0?reward/cost:0;
-      return reward>0&&ratio>=s.threshold?[{reward,cost,minutes:minutes*sample.fleetSpeed/s.fleetSpeed,ratio}]:[];
+      return reward>0&&(s.thresholdMode==='auto'||ratio>=s.threshold)?[{reward,cost,minutes:minutes*sample.fleetSpeed/s.fleetSpeed,ratio}]:[];
     }));
-    return {production,scale,e,pvp,pve,bonuses,cashback,batches};
+    let threshold=s.threshold;
+    if(s.thresholdMode==='auto'){
+      // Every distinct reward/claim ratio defines one possible threshold selection.
+      const rows=batches.flat().sort((a,b)=>b.ratio-a.ratio);
+      let reward=0,cost=0,minutes=0,best=-1;
+      threshold=0;
+      for(let i=0;i<rows.length;i++){
+        reward+=rows[i].reward;cost+=rows[i].cost;minutes+=rows[i].minutes;
+        if(i+1<rows.length&&rows[i+1].ratio===rows[i].ratio)continue;
+        const net=cost*(1-cashback)+production/2*sample.scans.length;
+        const income=Math.min(24*production/net,s.slots*1440/minutes)*reward;
+        if(rows[i].ratio<=1000&&income>best){best=income;threshold=rows[i].ratio;}
+      }
+      for(let i=0;i<batches.length;i++)batches[i]=batches[i].filter(row=>row.ratio>=threshold);
+    }
+    return {production,scale,e,pvp,pve,bonuses,cashback,batches,threshold};
   }
   function value(s){
     const a=selection(s),chosen=a.batches.flat(),n=chosen.length;
@@ -51,7 +67,7 @@
     const netPerFlight=n?meanClaimCost*(1-a.cashback)+scanPrice*scansPerFlight:0;
     const lithiumFlights=n?24*a.production/netPerFlight:0,slotFlights=n?s.slots*1440/meanMinutes:0;
     const flightsPerDay=Math.min(lithiumFlights,slotFlights),dailyIncome=meanReward*flightsPerDay;
-    return {ias:s.planets*s.scannerLevel,production:a.production,scale:a.scale,e:a.e,classFactor:s.mission==='pve'?a.pve:a.pvp,
+    return {threshold:a.threshold,pvp:a.pvp,pve:a.pve,ias:s.planets*s.scannerLevel,production:a.production,scale:a.scale,e:a.e,classFactor:s.mission==='pve'?a.pve:a.pvp,
       cashback:a.cashback,lithiumBonus:.002*s.planets*s.lithium,selected:n,acceptance:n/(sample.scans.length*6),meanClaimCost,meanReward,meanMinutes,
       scanPrice,scansPerFlight,netPerFlight,lithiumFlights,slotFlights,flightsPerDay,dailyIncome,index:dailyIncome,
       weeklyCap:168*a.production,reserve:168*a.production*s.reservePercent/100,slotLimited:slotFlights<lithiumFlights};
@@ -136,3 +152,4 @@
   const api={defaults,types,caps,budgetUnits,validate,selection,value,cost,candidates,generate,session,sampleInfo:{date:sample.date,scans:sample.scans.length,anomalies:sample.scans.length*6}};
   if(node)module.exports=api;else root.OrionPlanner=api;
 })(globalThis);
+
