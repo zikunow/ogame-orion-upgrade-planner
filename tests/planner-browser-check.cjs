@@ -42,6 +42,7 @@ const {chromium}=require('playwright');
     await page.locator('#theme').selectOption('minimal');
     await page.screenshot({path:process.env.SCREENSHOT_DIR+'/planner-'+width+'.png',fullPage:true});
   }
+  await page.locator('#theme').selectOption('cosmic');
   await page.route('https://zikunow.github.io/ogame-orion-ias-calculator/resources.html*',route=>route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><title>Navigation test</title>'}));
   await page.locator('#calculatorSelect').selectOption('https://zikunow.github.io/ogame-orion-ias-calculator/resources.html');
   await page.waitForURL('https://zikunow.github.io/ogame-orion-ias-calculator/resources.html?lang=ru&theme=cosmic');
