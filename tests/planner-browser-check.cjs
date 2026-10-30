@@ -10,7 +10,7 @@ const {chromium}=require('playwright');
   assert.equal(response.status(),200);
   assert.equal(await page.locator('#calculatorSelect').inputValue(),'https://zikunow.github.io/ogame-orion-upgrade-planner/');
   assert.equal(await page.locator('#calculatorSelect option:checked').textContent(),'Upgrade Planner');
-  assert.equal(await page.locator('#calculatorSelect option').count(),5);
+  assert.equal(await page.locator('#calculatorSelect option').count(),3);
   assert.equal(await page.locator('.planner-table tbody tr').count(),50);
   assert.match(await page.locator('.planner-table tbody tr').first().textContent(),/Metal building.*15 → 16/);
   assert.ok(await page.locator('.snapshot-table tbody tr').count()>1);
@@ -43,9 +43,9 @@ const {chromium}=require('playwright');
     await page.screenshot({path:process.env.SCREENSHOT_DIR+'/planner-'+width+'.png',fullPage:true});
   }
   await page.locator('#theme').selectOption('cosmic');
-  await page.route('https://zikunow.github.io/ogame-orion-ias-calculator/resources.html*',route=>route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><title>Navigation test</title>'}));
-  await page.locator('#calculatorSelect').selectOption('https://zikunow.github.io/ogame-orion-ias-calculator/resources.html');
-  await page.waitForURL('https://zikunow.github.io/ogame-orion-ias-calculator/resources.html?lang=ru&theme=cosmic');
+  await page.route('https://zikunow.github.io/ogame-orion-rewards-calculator/*',route=>route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><title>Navigation test</title>'}));
+  await page.locator('#calculatorSelect').selectOption('https://zikunow.github.io/ogame-orion-rewards-calculator/');
+  await page.waitForURL('https://zikunow.github.io/ogame-orion-rewards-calculator/?lang=ru&theme=cosmic');
   assert.deepEqual(errors,[]);console.log('PASS planner '+width+'px');await context.close();
  }}finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

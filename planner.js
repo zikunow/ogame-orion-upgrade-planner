@@ -23,7 +23,7 @@ function renderForm(){
   $('title').textContent=t('Планировщик улучшений','Upgrade planner');document.title=t('Планировщик улучшений Ориона — OGame','Orion Upgrade Planner — OGame');
   $('intro').textContent=t('Подберите следующие улучшения по приросту МСУ за календарный день. Цикл: недельный запас лития → отбор аномалий → резерв → пополнение. Каждый шаг — +1 уровень на всех планетах.','Choose upgrades by calendar-day MSU income gain. Cycle: weekly lithium stock → selected anomalies → reserve → refill. Each step adds one level on all planets.');
   $('calculatorLabel').textContent=t('Калькулятор','Calculator');$('calculatorSelect').setAttribute('aria-label',t('Калькулятор','Calculator'));
-  for(const [id,ru,en]of [['navIas','Калькулятор тарелок (IAS)','Scanner Calculator (IAS)'],['navResources','Калькулятор подзданий','Orion Building Calculator'],['navGeneral','Калькулятор T18 Генерала','General T18 Calculator'],['navRewards','Симулятор ресурсных наград','Resource Rewards Simulator'],['navPlanner','Планировщик улучшений','Upgrade Planner']])$(id).textContent=t(ru,en);
+  for(const [id,ru,en]of [['navRewards','Награды Ориона','Orion rewards'],['navSimple','Простой калькулятор','Simple calculator'],['navPlanner','Планировщик улучшений','Upgrade Planner']])$(id).textContent=t(ru,en);
   $('calculatorSelect').value='https://zikunow.github.io/ogame-orion-upgrade-planner/';
   $('themeLabel').textContent=t('Дизайн','Design');$('theme').value=theme;document.documentElement.dataset.theme=theme;document.documentElement.lang=lang;
   $('langRu').setAttribute('aria-pressed',String(lang==='ru'));$('langEn').setAttribute('aria-pressed',String(lang==='en'));
