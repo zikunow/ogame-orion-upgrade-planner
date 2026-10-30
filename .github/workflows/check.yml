@@ -1,0 +1,39 @@
+name: Check planner
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+permissions:
+  contents: read
+jobs:
+  calculations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Verify independent numerical reference
+        run: |
+          python3 tests/planner-reference.py > /tmp/planner-reference.json
+          diff tests/fixtures/planner-reference.json /tmp/planner-reference.json
+      - name: Check calculations and UI adapter
+        run: node --test tests/*.test.cjs
+  interface:
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.63.0-noble
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install browser test dependency
+        run: npm install --no-save --package-lock=false playwright@1.63.0
+      - name: Check desktop and mobile interface
+        env:
+          PLANNER_URL: http://127.0.0.1:8080/?lang=en
+          SCREENSHOT_DIR: /tmp/planner-screenshots
+        run: |
+          mkdir -p /tmp/planner-screenshots
+          node -e 'const http=require("node:http"),fs=require("node:fs"),path=require("node:path");http.createServer((req,res)=>{const name=decodeURIComponent(new URL(req.url,"http://localhost").pathname),file=path.join(process.cwd(),name==="/"?"index.html":name);try{const body=fs.readFileSync(file);res.setHeader("Content-Type",file.endsWith(".js")?"text/javascript":file.endsWith(".css")?"text/css":"text/html");res.end(body)}catch{res.statusCode=404;res.end()}}).listen(8080,"0.0.0.0")' &
+          node tests/planner-browser-check.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: planner-interface
+          path: /tmp/planner-screenshots
